@@ -38,7 +38,7 @@ void parseAndShowString(str src) {
 void run(loc file) {
   // Step 1 – parse
   println("=== Step 1: Parsing <file> ===");
-  Program prog;
+  Program prog = program(\module("", [], []));
   try {
     prog = loadProgram(file);
     println("✓ Parse OK");
@@ -65,7 +65,7 @@ void run(loc file) {
 // Same as run but from a source string
 void runStr(str source) {
   println("=== Step 1: Parsing ===");
-  Program prog;
+  Program prog = program(\module("", [], []));
   try {
     prog = parseProgram(source);
     println("✓ Parse OK");

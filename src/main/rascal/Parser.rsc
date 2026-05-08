@@ -19,58 +19,142 @@ public Program loadProgram(loc file) = implodeProgram(parseVeriLangFile(file));
 public Program parseProgram(str source) = implodeProgram(parseVeriLang(source));
 
 public Program implodeProgram(Tree t) {
-  if ((start[Program]) `<Program p>` := t) {
-    return implodeProgram2(p);
+  str moduleName = collectModuleName(t);
+  list[Import] imports = collectImports(t);
+  list[BodyDecl] body = collectBodyDecls(t);
+
+  if (moduleName != "") {
+    return program(\module(moduleName, imports, body));
   }
-  throw "Expected start[Program], got: <t>";
+  throw "Expected VeriLang program, got: <t>";
 }
 
 Program implodeProgram2((Program) `<Module m>`) = program(implodeModule(m));
 
-Module implodeModule((Module) `defmodule <Identifier name> <Body body> end`) =
-  \module("<name>", [], implodeBody(body));
+str collectModuleName(Tree t) {
+  switch(t) {
+    case appl(prod(sort("Module"), _, _), _): {
+      if ((Module) `defmodule <Identifier name> <Imports? _> <Body _> end` := t) {
+        return "<name>";
+      }
+    }
+    case appl(_, list[Tree] args): {
+      for (Tree arg <- args) {
+        str found = collectModuleName(arg);
+        if (found != "") {
+          return found;
+        }
+      }
+    }
+    default: ;
+  }
+  return "";
+}
 
-Module implodeModule((Module) `defmodule <Identifier name> <Imports imports> <Body body> end`) =
-  \module("<name>", implodeImports(imports), implodeBody(body));
+list[Import] collectImports(Tree t) {
+  switch(t) {
+    case appl(prod(sort("Import"), _, _), _): {
+      return [implodeImport(t)];
+    }
+    case appl(_, list[Tree] args): {
+      list[Import] imports = [];
+      for (Tree arg <- args) {
+        imports += collectImports(arg);
+      }
+      return imports;
+    }
+    default: return [];
+  }
+}
 
-list[Import] implodeImports((Imports) `<Import+ imports>`) =
-  [implodeImport(i) | Import i <- imports];
+list[BodyDecl] collectBodyDecls(Tree t) {
+  switch(t) {
+    case appl(prod(sort("BodyDecl"), _, _), _): {
+      return [implodeBodyDecl(t)];
+    }
+    case appl(_, list[Tree] args): {
+      list[BodyDecl] decls = [];
+      for (Tree arg <- args) {
+        decls += collectBodyDecls(arg);
+      }
+      return decls;
+    }
+    default: return [];
+  }
+}
 
-Import implodeImport((Import) `using <Identifier name>`) = \import("<name>");
+Module implodeModule((Module) `defmodule <Identifier name> <Imports? imports> <Body body> end`) {
+  list[Import] importedModules = [];
+  if (imports has top) {
+    importedModules = implodeImports(imports.top);
+  }
+  return \module("<name>", importedModules, implodeBody(body));
+}
+
+list[Import] implodeImports(value imports) {
+  if ((Imports) `<Import+ importTrees>` := imports) {
+    return [implodeImport(i) | Import i <- importTrees];
+  }
+  return [];
+}
+
+Import implodeImport(value importTree) {
+  if ((Import) `using <Identifier name>` := importTree) {
+    return \import("<name>");
+  }
+  throw "Expected Import, got: <importTree>";
+}
 
 list[BodyDecl] implodeBody((Body) `<BodyDecl* decls>`) =
   [implodeBodyDecl(d) | BodyDecl d <- decls];
 
-BodyDecl implodeBodyDecl((BodyDecl) `<Space s>`) = implodeSpace(s);
-BodyDecl implodeBodyDecl((BodyDecl) `<OperatorDef opDef>`) = implodeOperator(opDef);
-BodyDecl implodeBodyDecl((BodyDecl) `<VarBlock vars>`) = implodeVarBlock(vars);
-BodyDecl implodeBodyDecl((BodyDecl) `<RuleDef rule>`) = implodeRule(rule);
-BodyDecl implodeBodyDecl((BodyDecl) `<ExpressionDef expDef>`) = implodeExpressionDef(expDef);
-
-BodyDecl implodeSpace((Space) `defspace <Identifier name> end`) =
-  space("<name>", []);
+BodyDecl implodeBodyDecl(value declTree) {
+  if ((BodyDecl) `<Space s>` := declTree) {
+    return implodeSpace(s);
+  }
+  if ((BodyDecl) `<OperatorDef opDef>` := declTree) {
+    return implodeOperator(opDef);
+  }
+  if ((BodyDecl) `<VarBlock vars>` := declTree) {
+    return implodeVarBlock(vars);
+  }
+  if ((BodyDecl) `<RuleDef rule>` := declTree) {
+    return implodeRule(rule);
+  }
+  if ((BodyDecl) `<ExpressionDef expDef>` := declTree) {
+    return implodeExpressionDef(expDef);
+  }
+  throw "Expected BodyDecl, got: <declTree>";
+}
 
 BodyDecl implodeSpace((Space) `defspace <Identifier name> <SubSpace sub> end`) =
   space("<name>", [implodeSubSpace(sub)]);
 
-str implodeSubSpace((SubSpace) `\< <Identifier name>`) = "<name>";
+BodyDecl implodeSpace((Space) `defspace <Identifier name> end`) =
+  space("<name>", []);
 
-BodyDecl implodeOperator((OperatorDef) `defoperator <Identifier name> : <CurryingNotation curry> end`) =
-  operatorDef("<name>", implodeCurrying(curry), []);
+str implodeSubSpace((SubSpace) `\< <Identifier name>`) = "<name>";
 
 BodyDecl implodeOperator((OperatorDef) `defoperator <Identifier name> : <CurryingNotation curry> <Attributes attrs> end`) =
   operatorDef("<name>", implodeCurrying(curry), implodeAttributes(attrs));
+
+BodyDecl implodeOperator((OperatorDef) `defoperator <Identifier name> : <CurryingNotation curry> end`) =
+  operatorDef("<name>", implodeCurrying(curry), []);
 
 list[VeriType] implodeCurrying((CurryingNotation) `<{TypeRef "-\>"}+ types>`) =
   [implodeTypeRef(t) | TypeRef t <- types];
 
 VeriType implodeTypeRef((TypeRef) `<Type tp>`) = implodeType(tp);
 
-VeriType implodeType((Type) `Int`) = typeInt();
-VeriType implodeType((Type) `Bool`) = typeBool();
-VeriType implodeType((Type) `Char`) = typeChar();
-VeriType implodeType((Type) `String`) = typeString();
-VeriType implodeType((Type) `<Identifier id>`) = typeUser("<id>");
+VeriType implodeType((Type) `<Identifier id>`) {
+  switch("<id>") {
+    case "Int": return typeInt();
+    case "Bool": return typeBool();
+    case "Char": return typeChar();
+    case "String": return typeString();
+    default: return typeUser("<id>");
+  }
+}
 
 BodyDecl implodeVarBlock((VarBlock) `defvar <VarDef+ defs> end`) =
   varBlock([implodeVarDef(d) | VarDef d <- defs]);
@@ -81,11 +165,11 @@ VarDef implodeVarDef((VarDef) `<Identifier name> : <Type tp>`) =
 BodyDecl implodeRule((RuleDef) `defrule <OpApplication lhs> -\> <OpApplication rhs> end`) =
   ruleDef(implodeOpApp(lhs), implodeOpApp(rhs));
 
-BodyDecl implodeExpressionDef((ExpressionDef) `defexpression <Expression expr> end`) =
-  expressionDecl(implodeExpression(expr), []);
-
 BodyDecl implodeExpressionDef((ExpressionDef) `defexpression <Expression expr> <Attributes attrs> end`) =
   expressionDecl(implodeExpression(expr), implodeAttributes(attrs));
+
+BodyDecl implodeExpressionDef((ExpressionDef) `defexpression <Expression expr> end`) =
+  expressionDecl(implodeExpression(expr), []);
 
 Expression implodeExpression((Expression) `<QuantExpr q>`) = implodeQuant(q);
 Expression implodeExpression((Expression) `<OrExpr e>`) = implodeOrExpr(e);

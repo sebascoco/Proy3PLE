@@ -7,7 +7,6 @@ import AST;
 import Parser;
 import IO;
 import List;
-import Map;
 import String;
 
 // ─── Runtime environment ─────────────────────────────────────────────────────

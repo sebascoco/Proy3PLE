@@ -7,7 +7,6 @@ keyword Keywords
   | "defvar" | "defrule" | "defexpression" | "end"
   | "forall" | "exists" | "in" | "and" | "or" | "neg"
   | "True" | "False" | "None"
-  | "Int" | "Bool" | "Char" | "String"
   ;
 
 lexical Letter = [a-zA-Z];
@@ -48,12 +47,7 @@ syntax CurryingNotation = {TypeRef "-\>"}+;
 syntax TypeRef = Type;
 
 syntax Type
-  = "Int"
-  | "Bool"
-  | "Char"
-  | "String"
-  | Identifier
-  ;
+  = Identifier;
 
 syntax VarBlock = "defvar" VarDef+ "end";
 syntax VarDef = Identifier ":" Type;

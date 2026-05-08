@@ -62,9 +62,9 @@ data OpApplication = applyOp(str operator, list[Expression] args);
 
 // ─── Literals ────────────────────────────────────────────────────────────────
 data Literal
-  = intLit(int val)
-  | boolLit(bool val)
-  | charLit(str val)
-  | strLit(str val)
+  = intLit(int intValue)
+  | boolLit(bool boolValue)
+  | charLit(str charValue)
+  | strLit(str stringValue)
   | nullLit()
   ;

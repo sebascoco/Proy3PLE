@@ -1,10 +1,13 @@
 defmodule Set
   using List
 
+  defspace SuperSet end
+  defspace Element end
   defspace Set < SuperSet end
 
   defoperator union : Set -> Set -> Set [associative id:∅] end
   defoperator isIn : Element -> Set -> Bool end
+  defoperator disjunction : Bool -> Bool -> Bool end
   defoperator implication : Bool -> Bool -> Bool end
   defoperator negation : Bool -> Bool end
 

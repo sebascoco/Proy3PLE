@@ -168,11 +168,22 @@ list[TypeError] checkTypeExists(VeriType tp, SpaceEnv spaces, str context) {
 }
 
 // ─── Expression type checking (Task 5) ───────────────────────────────────────
-list[TypeError] checkExprTypes(Expression expr, SpaceEnv _, OpEnv ops, TypeEnv vars, set[str] defined) {
+list[TypeError] checkExprTypes(Expression expr, SpaceEnv spaces, OpEnv ops, TypeEnv vars, set[str] defined) {
   list[TypeError] errors = [];
+  set[str] bound = boundVars(expr);
   visit(expr) {
+    case forall(str _, str space, Expression _): {
+      if (space notin spaces) {
+        errors += [typeError("Quantifier references undefined space " + space + " (element existence rule)")];
+      }
+    }
+    case exists(str _, str space, Expression _): {
+      if (space notin spaces) {
+        errors += [typeError("Quantifier references undefined space " + space + " (element existence rule)")];
+      }
+    }
     case idExpr(str name): {
-      if (name notin vars && name notin defined && name notin ops) {
+      if (name notin vars && name notin bound && name notin defined && name notin ops) {
         errors += [typeWarning("Identifier \'<name>\' not found in scope (may be a bound variable)")];
       }
     }
@@ -215,6 +226,15 @@ list[TypeError] checkExprTypes(Expression expr, SpaceEnv _, OpEnv ops, TypeEnv v
     }
   }
   return errors;
+}
+
+set[str] boundVars(Expression expr) {
+  set[str] names = {};
+  visit(expr) {
+    case forall(str var, str _, Expression _): names += {var};
+    case exists(str var, str _, Expression _): names += {var};
+  }
+  return names;
 }
 
 // ─── Type inference (for checking operand types) ──────────────────────────────
