@@ -215,6 +215,12 @@ list[TypeError] checkExprTypes(Expression expr, SpaceEnv spaces, OpEnv ops, Type
         case divOp(): errors += checkIntOperands("/", lt, rt);
         case modOp(): errors += checkIntOperands("%", lt, rt);
         case powOp(): errors += checkIntOperands("**", lt, rt);
+        case eqOp():  errors += checkComparableOperands("=", lt, rt);
+        case neqOp(): errors += checkComparableOperands("!=", lt, rt);
+        case ltOp():  errors += checkIntOperands("\<", lt, rt);
+        case gtOp():  errors += checkIntOperands("\>", lt, rt);
+        case leqOp(): errors += checkIntOperands("\<=", lt, rt);
+        case geqOp(): errors += checkIntOperands("\>=", lt, rt);
         default: ;
       }
     }
@@ -252,6 +258,29 @@ CheckedType inferType(opApp(applyOp(str name, _)), TypeEnv _, OpEnv ops) {
     return last(ops[name]);   // return type is the last in curried signature
   return tUnknown();
 }
+CheckedType inferType(binOp(Expression l, BinOp op, Expression r), TypeEnv vars, OpEnv ops) {
+  CheckedType lt = inferType(l, vars, ops);
+  CheckedType rt = inferType(r, vars, ops);
+  switch(op) {
+    case andOp():     return tBool();
+    case orOp():      return tBool();
+    case impliesOp(): return tBool();
+    case equivOp():   return tBool();
+    case eqOp():      return tBool();
+    case neqOp():     return tBool();
+    case ltOp():      return tBool();
+    case gtOp():      return tBool();
+    case leqOp():     return tBool();
+    case geqOp():     return tBool();
+    case addOp():     return (lt == tInt() && rt == tInt()) ? tInt() : tUnknown();
+    case subOp():     return (lt == tInt() && rt == tInt()) ? tInt() : tUnknown();
+    case mulOp():     return (lt == tInt() && rt == tInt()) ? tInt() : tUnknown();
+    case divOp():     return (lt == tInt() && rt == tInt()) ? tInt() : tUnknown();
+    case modOp():     return (lt == tInt() && rt == tInt()) ? tInt() : tUnknown();
+    case powOp():     return (lt == tInt() && rt == tInt()) ? tInt() : tUnknown();
+    default:          return tUnknown();
+  }
+}
 default CheckedType inferType(Expression _, TypeEnv _, OpEnv _) = tUnknown();
 
 // ─── Operand type checks ──────────────────────────────────────────────────────
@@ -267,6 +296,14 @@ list[TypeError] checkIntOperands(str op, CheckedType lt, CheckedType rt) {
   if (lt != tInt() && lt != tUnknown()) errors += [typeError("Operator \'<op>\': left operand must be Int, got <showCheckedType(lt)>")];
   if (rt != tInt() && rt != tUnknown()) errors += [typeError("Operator \'<op>\': right operand must be Int, got <showCheckedType(rt)>")];
   return errors;
+}
+
+list[TypeError] checkComparableOperands(str op, CheckedType lt, CheckedType rt) {
+  if (lt == tUnknown() || rt == tUnknown()) return [];
+  if (lt != rt) {
+    return [typeError("Operator \'<op>\': operands must have the same type, got <showCheckedType(lt)> and <showCheckedType(rt)>")];
+  }
+  return [];
 }
 
 // ─── Attribute element existence check (Task 6) ──────────────────────────────

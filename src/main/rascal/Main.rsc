@@ -87,19 +87,24 @@ void runStr(str source) {
   }
 }
 
+// Convenience wrapper so the checker can be called from Main alongside run/runStr.
+void checkFile(loc file) {
+  TypeChecker::checkFile(file);
+}
+
 // ─── Quick tests ──────────────────────────────────────────────────────────────
 void testMinimal() {
   runStr("defmodule test end");
 }
 
 void testSet() {
-  run(|project://VeriLang3/examples/Set.vl|);
+  run(|project://VeriLang3_zip/examples/Set.vl|);
 }
 
 void testTypes() {
-  run(|project://VeriLang3/examples/TypeTest.vl|);
+  run(|project://VeriLang3_zip/examples/TypeTest.vl|);
 }
 
 void testErrors() {
-  run(|project://VeriLang3/examples/TypeErrors.vl|);
+  run(|project://VeriLang3_zip/examples/TypeErrors.vl|);
 }
